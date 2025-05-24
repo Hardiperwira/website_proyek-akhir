@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Website Pengukuran Pasien - Header Sejajar</title>
+  <link href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #87CEEB;
+      color: #333;
+      font-family: 'Times New Roman', serif;
+      margin-bottom: 3rem;
+    }
+    nav.container-fluid {
+      background-color: #4682B4;
+      padding: 10px 20px;
+      color: white;
+      border-radius: 8px 8px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+    nav.container-fluid .title {
+      font-weight: bold;
+      font-size: 1.25rem;
+    }
+    nav.container-fluid ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      gap: 1rem;
+    }
+    nav.container-fluid ul li a {
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      display: block;
+    }
+    nav.container-fluid ul li a:hover,
+    nav.container-fluid ul li a.active {
+      background-color: #356594;
+    }
+    main.container {
+      background-color: rgba(255, 255, 255, 0.9);
+      padding: 20px;
+      border-radius: 0 0 8px 8px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    .btn-delete {
+      background-color: #dc3545;
+      border: none;
+      padding: 5px 10px;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .btn-delete:hover {
+      background-color: #b02a37;
+    }
+    .search-container {
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <nav class="container-fluid" role="banner">
+    <div class="title">Input Data Pasien</div>
+    <ul role="navigation" aria-label="Navigasi utama">
+      <li><a href="#" id="tab-beranda" class="active">Beranda</a></li>
+      <li><a href="#" id="tab-history">History</a></li>
+    </ul>
+  </nav>
+
+  <main class="container">
+    <section id="beranda" role="region" aria-labelledby="tab-beranda">
+      <form id="data-pasien">
+        <label for="nama">Nama:</label>
+        <input type="text" id="nama" name="nama" required />
+
+        <label for="umur">Umur:</label>
+        <input type="number" id="umur" name="umur" required />
+
+        <label for="jenis_kelamin">Jenis Kelamin:</label>
+        <select id="jenis_kelamin" name="jenis_kelamin" required>
+          <option value="Laki-laki">Laki-laki</option>
+          <option value="Perempuan">Perempuan</option>
+        </select>
+
+        <label for="nomor_wa">Nomor WhatsApp:</label>
+        <input type="text" id="nomor_wa" name="nomor_wa" required />
+
+        <label for="bpm">BPM (Detak Jantung):</label>
+        <input type="number" id="bpm" name="bpm" required />
+
+        <label for="suhu">Suhu Tubuh (°C):</label>
+        <input type="number" id="suhu" name="suhu" required />
+
+        <label for="tekanan_darah">Tekanan Darah (Sistolik/Diastolik):</label>
+        <input type="text" id="tekanan_darah" name="tekanan_darah" required />
+
+        <button type="submit">Kirim Data</button>
+      </form>
+    </section>
+
+    <section id="history" role="region" aria-labelledby="tab-history" hidden>
+      <h2>Riwayat Pengukuran</h2>
+      
+      <!-- Search Input for History -->
+      <div class="search-container">
+        <label for="search-name">Cari berdasarkan Nama:</label>
+        <input type="text" id="search-name" placeholder="Masukkan Nama Pasien" />
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Nama</th>
+            <th>Umur</th>
+            <th>Jenis Kelamin</th>
+            <th>Nomor WhatsApp</th>
+            <th>BPM</th>
+            <th>Suhu</th>
+            <th>Tekanan Darah</th>
+            <th>Tanggal</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="history-list">
+          <!-- Data riwayat pasien muncul di sini -->
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import {
+      getDatabase,
+      ref,
+      push,
+      set,
+      onValue,
+      remove
+    } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAAxz1nZ8nqQKWUysmrP5byoZd0ydvwXhI",
+      authDomain: "pro-sistem-monitoring-keseha.firebaseapp.com",
+      databaseURL: "https://sistem-monitoring-keseha-618a5-default-rtdb.asia-southeast1.firebasedatabase.app/",
+      projectId: "pro-sistem-monitoring-keseha",
+      storageBucket: "pro-sistem-monitoring-keseha.appspot.com",
+      messagingSenderId: "1081489203399",
+      appId: "1:1081489203399:web:2cd3fb15eaf44468971ee2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const form = document.getElementById("data-pasien");
+    const historyList = document.getElementById("history-list");
+
+    const tabs = {
+      'tab-beranda': document.getElementById('beranda'),
+      'tab-history': document.getElementById('history')
+    };
+    const navLinks = document.querySelectorAll('nav ul li a');
+
+    navLinks.forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        navLinks.forEach(l => l.classList.remove('active'));
+        Object.values(tabs).forEach(sec => sec.hidden = true);
+        link.classList.add('active');
+        tabs[link.id].hidden = false;
+      });
+    });
+
+    function hapusData(key) {
+      if (!confirm("Yakin ingin menghapus data ini?")) return;
+      const dataRef = ref(db, "pengukuran/" + key);
+      remove(dataRef).catch(error => alert("Gagal menghapus data: " + error.message));
+    }
+
+    async function cekLimitDanTambahData(dataBaru) {
+      const pengukuranRef = ref(db, "pengukuran");
+      const snapshot = await new Promise((resolve) =>
+        onValue(pengukuranRef, resolve, { onlyOnce: true })
+      );
+
+      const data = snapshot.val();
+      const keys = data ? Object.keys(data) : [];
+
+      if (keys.length >= 25) {
+        let minTimestamp = Infinity;
+        let keyMinTimestamp = null;
+
+        for (const key of keys) {
+          if (data[key].timestamp < minTimestamp) {
+            minTimestamp = data[key].timestamp;
+            keyMinTimestamp = key;
+          }
+        }
+
+        if (keyMinTimestamp) {
+          await remove(ref(db, "pengukuran/" + keyMinTimestamp));
+        }
+      }
+
+      const newRef = push(pengukuranRef);
+      await set(newRef, dataBaru);
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const nama = form.nama.value.trim();
+      const umur = form.umur.value.trim();
+      const jenis_kelamin = form.jenis_kelamin.value;
+      let nomor_wa = form.nomor_wa.value.trim();
+      const bpm = form.bpm.value.trim();
+      const suhu = form.suhu.value.trim();
+      const tekanan_darah = form.tekanan_darah.value.trim();
+
+      if (!nama || !umur || !jenis_kelamin || !nomor_wa || !bpm || !suhu || !tekanan_darah) {
+        alert("Lengkapi semua data!");
+        return;
+      }
+
+      if (!nomor_wa.startsWith('+')) {
+        nomor_wa = '+62' + nomor_wa.substring(1);
+      }
+
+      let bpmKlasifikasi = "";
+      if (bpm < 60) bpmKlasifikasi = "Rendah";
+      else if (bpm >= 60 && bpm <= 100) bpmKlasifikasi = "Normal";
+      else bpmKlasifikasi = "Tinggi";
+
+      let suhuKlasifikasi = "";
+      if (suhu < 36.1) suhuKlasifikasi = "Hipotermia";
+      else if (suhu >= 36.1 && suhu <= 37.5) suhuKlasifikasi = "Normal";
+      else suhuKlasifikasi = "Demam";
+
+      let tekananKlasifikasi = "";
+      const [sistolik, diastolik] = tekanan_darah.split('/');
+      if (sistolik < 90 || diastolik < 60) tekananKlasifikasi = "Rendah";
+      else if (sistolik <= 120 && diastolik <= 80) tekananKlasifikasi = "Normal";
+      else tekananKlasifikasi = "Tinggi";
+
+      const dataBaru = {
+        nama,
+        umur,
+        jenis_kelamin,
+        nomor_wa,
+        bpm,
+        suhu,
+        tekanan_darah,
+        bpmKlasifikasi,
+        suhuKlasifikasi,
+        tekananKlasifikasi,
+        timestamp: Date.now()
+      };
+
+      try {
+        await cekLimitDanTambahData(dataBaru);
+        alert("Data berhasil disimpan!");
+        form.reset();
+
+        const waUrl = `https://wa.me/${nomor_wa}?text=Halo%20${nama},%20terima%20kasih%20telah%20mengisi%20data%20pasien.%20Berikut%20adalah%20data%20pengukuran%20Anda:%0A%0ANama%20:%20${nama}%0AUmur%20:%20${umur}%0AJenis%20Kelamin%20:%20${jenis_kelamin}%0ABPM%20:%20${bpm}%20(${bpmKlasifikasi})%0ASuhu%20:%20${suhu}%20°C%20(${suhuKlasifikasi})%0ATekanan%20Darah%20:%20${tekanan_darah}%20(${tekananKlasifikasi})`;
+        window.open(waUrl, '_blank');
+
+        navLinks.forEach(l => l.classList.remove('active'));
+        navLinks[1].classList.add('active');
+        tabs['tab-history'].hidden = false;
+        tabs['tab-beranda'].hidden = true;
+      } catch (error) {
+        alert("Gagal menyimpan data: " + error.message);
+      }
+    });
+
+    const pengukuranRef = ref(db, "pengukuran");
+    onValue(pengukuranRef, (snapshot) => {
+      historyList.innerHTML = "";
+      const data = snapshot.val();
+      if (data) {
+        Object.entries(data).forEach(([key, item]) => {
+          let tanggal = "-";
+          if (item.timestamp) {
+            const date = new Date(item.timestamp);
+            tanggal = isNaN(date.getTime()) ? "-" : date.toLocaleDateString('id-ID');
+          }
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${item.nama}</td>
+            <td>${item.umur}</td>
+            <td>${item.jenis_kelamin}</td>
+            <td>${item.nomor_wa}</td>
+            <td>${item.bpm} (${item.bpmKlasifikasi})</td>
+            <td>${item.suhu} °C (${item.suhuKlasifikasi})</td>
+            <td>${item.tekanan_darah} (${item.tekananKlasifikasi})</td>
+            <td>${tanggal}</td>
+            <td><button class="btn-delete" data-key="${key}">Hapus</button></td>
+          `;
+          historyList.appendChild(row);
+        });
+
+        document.querySelectorAll(".btn-delete").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const key = btn.getAttribute("data-key");
+            hapusData(key);
+          });
+        });
+      } else {
+        historyList.innerHTML = `<tr><td colspan="9" style="text-align:center;">Belum ada data</td></tr>`;
+      }
+    });
+
+    // Implement search functionality
+    document.getElementById('search-name').addEventListener('input', function(event) {
+      const searchTerm = event.target.value.toLowerCase();
+      const rows = historyList.getElementsByTagName('tr');
+      
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const nameCell = row.cells[0];
+        const nameText = nameCell ? nameCell.textContent.toLowerCase() : '';
+        
+        if (nameText.indexOf(searchTerm) > -1) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      }
+    });
+  </script>
+</body>
+</html>
